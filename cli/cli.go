@@ -14,7 +14,6 @@ import (
 )
 
 func Run(args []string) int {
-	//todo
 	encFlags := flag.NewFlagSet("enc", flag.ExitOnError)
 	encIn := flag.Bool("stdin", false, "read from stdin instead of a file")
 	encOut := flag.Bool("stdout", false, "write to stdout instead of a file")
@@ -24,14 +23,14 @@ func Run(args []string) int {
 	decIn := flag.Bool("stdin", false, "read from stdin instead of file")
 	decOut := flag.Bool("stdout", false, "write to stdout instead of a file")
 
+	var ciphertext []byte
+	plaintext := []byte{}
+
 	switch args[1] {
 	case "enc":
 		encFlags.Parse(args[2:])
-		//todo
 		sc := bufio.NewScanner(os.Stdin)
 		var out *bufio.Writer
-
-		plaintext := []byte{}
 
 		if *encIn {
 			fmt.Println("enter plaintext to encrypt")
@@ -70,11 +69,12 @@ func Run(args []string) int {
 				password = strings.TrimSpace(sc.Text())
 				break
 			}
-			cipherText, err := pkg.EncryptWithPassword(data, []byte(password))
-			//todo
-
+			ciphertext, err = pkg.EncryptWithPassword(data, []byte(password))
+			if err != nil {
+				log.Printf("error encrypting with password: %v\n", err)
+				return 1
+			}
 		}
-
 		if *encOut {
 			out = bufio.NewWriter(os.Stdout)
 		}
