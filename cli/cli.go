@@ -15,69 +15,67 @@ import (
 
 func Run(args []string) int {
 	encFlags := flag.NewFlagSet("enc", flag.ExitOnError)
-	encIn := flag.Bool("stdin", false, "read from stdin instead of a file")
-	encOut := flag.Bool("stdout", false, "write to stdout instead of a file")
-	encOutputFormat := flag.String("f", "hex", "output format; values: txt(base64), bin")
+	// encIn := flag.Bool("stdin", false, "read from stdin instead of a file")
+	// encOut := flag.Bool("stdout", false, "write to stdout instead of a file")
+	// encOutputFormat := flag.String("f", "hex", "output format; values: txt(base64), bin")
 
 	decFlags := flag.NewFlagSet("dec", flag.ExitOnError)
-	decIn := flag.Bool("stdin", false, "read from stdin instead of file")
-	decOut := flag.Bool("stdout", false, "write to stdout instead of a file")
+	// decIn := flag.Bool("stdin", false, "read from stdin instead of file")
+	// decOut := flag.Bool("stdout", false, "write to stdout instead of a file")
 
-	var ciphertext []byte
-	plaintext := []byte{}
+	ciphertext := []byte{}
+	// plaintext := []byte{}
 
 	switch args[1] {
 	case "enc":
-		encFlags.Parse(args[2:])
+		err := encFlags.Parse(args[2:])
+		if err != nil {
+			log.Printf("error parsing flags: %v\n", err)
+			return 1
+		}
+
+		f, err := os.Open(filepath.Clean(encFlags.Arg(0)))
+		if err != nil {
+			log.Printf("error opening file %q: %v\n", encFlags.Arg(0), err)
+			return 1
+		}
+		defer f.Close()
+
+		data, err := io.ReadAll(f)
+		if err != nil {
+			log.Printf("error reading file: %v\n", err)
+			return 1
+		}
+
 		sc := bufio.NewScanner(os.Stdin)
-		var out *bufio.Writer
-
-		if *encIn {
-			fmt.Println("enter plaintext to encrypt")
-			fmt.Print(">> ")
-			for sc.Scan() {
-
-				if err := sc.Err(); err != nil {
-					log.Printf("error reading from stdin: %v\n", err)
-				}
-				data := []byte(sc.Text())
-				plaintext = append(plaintext, data...)
-			}
-		} else {
-			fp := filepath.Clean(args[len(args)-1])
-			f, err := os.Open(fp)
-			if err != nil {
-				log.Printf("error opening target file: %v\n", err)
-				return 1
-			}
-			defer f.Close()
-
-			data, err := io.ReadAll(f)
-			if err != nil {
-				log.Printf("error reading entire file: %v\n", err)
-			}
-			password := ""
-			fmt.Println("password for encryption:")
-			fmt.Print(">>")
-
-			for sc.Scan() {
-				t := sc.Text()
-				if t == "" {
-					fmt.Print(">>")
-					continue
-				}
-				password = strings.TrimSpace(sc.Text())
+		fmt.Print("password for encrypting >> ")
+		var password string
+		for sc.Scan() {
+			password = strings.TrimSpace(sc.Text())
+			if password != "" {
 				break
 			}
-			ciphertext, err = pkg.EncryptWithPassword(data, []byte(password))
-			if err != nil {
-				log.Printf("error encrypting with password: %v\n", err)
-				return 1
-			}
 		}
-		if *encOut {
-			out = bufio.NewWriter(os.Stdout)
+		ciphertext, err = pkg.EncryptWithPassword(data, []byte(password))
+		if err != nil {
+			log.Printf("error encrypting: %v\n", err)
+			return 1
 		}
+
+		outputFileName := f.Name() + ".enc"
+		outputFile, err := os.Create(outputFileName)
+		if err != nil {
+			log.Printf("error making outputfile: %v\n", err)
+			return 1
+		}
+		defer outputFile.Close()
+
+		n, err := outputFile.Write(ciphertext)
+		if err != nil {
+			log.Printf("error writing to file: %v\n", err)
+			return 1
+		}
+		fmt.Printf("Wrote %d bytes to %s\n", n, outputFileName)
 
 	case "dec":
 		decFlags.Parse(args[2:])

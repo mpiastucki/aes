@@ -1,7 +1,11 @@
 package main
 
-import "os"
+import (
+	"os"
+
+	"github.com/happymanju/aes/cli"
+)
 
 func main() {
-	os.Exit(0)
+	os.Exit(cli.Run(os.Args))
 }
